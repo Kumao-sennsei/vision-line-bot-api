@@ -3,7 +3,6 @@ const line = require('@line/bot-sdk');
 require('dotenv').config();
 
 const app = express();
-const port = process.env.PORT || 3000;
 
 // LINE bot設定
 const config = {
@@ -11,28 +10,33 @@ const config = {
   channelSecret: process.env.LINE_CHANNEL_SECRET,
 };
 
-// Webhookエンドポイント
+// ミドルウェア設定
 app.post('/webhook', line.middleware(config), (req, res) => {
+  const events = req.body.events;
   Promise
-    .all(req.body.events.map(handleEvent))
-    .then((result) => res.json(result));
+    .all(events.map(handleEvent))
+    .then((result) => res.json(result))
+    .catch((err) => {
+      console.error(err);
+      res.status(500).end();
+    });
 });
 
-// 応答ハンドラー（とりあえず「こんにちは」と返す）
-const client = new line.Client(config);
-
 function handleEvent(event) {
+  // テキストメッセージだけ対応
   if (event.type !== 'message' || event.message.type !== 'text') {
     return Promise.resolve(null);
   }
 
+  const client = new line.Client(config);
   return client.replyMessage(event.replyToken, {
     type: 'text',
-    text: 'こんにちは！くまお先生です🐻✨',
+    text: `くまお先生だよ！「${event.message.text}」って言ったね？`,
   });
 }
 
-// サーバー起動
+// ポート設定（Railwayでは process.env.PORT が必須）
+const port = process.env.PORT || 3000;
 app.listen(port, () => {
-  console.log(`LINE Bot is running on port ${port}`);
+  console.log(`Server is running on port ${port}`);
 });
